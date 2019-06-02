@@ -1,11 +1,8 @@
 package io.shmaks.samples.io.shmaks.samples.ktor.service
 
-import com.google.common.util.concurrent.AtomicDouble
 import io.shmaks.samples.ktor.model.*
 import io.shmaks.samples.ktor.service.*
-import jetbrains.exodus.database.TransientEntityStore
 import kotlinx.coroutines.*
-import kotlinx.dnq.query.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.or
@@ -28,15 +25,15 @@ class TransferServiceTest {
 
     companion object {
         val dbName = "moneyTransfers-test"
-        lateinit var xodusStore: TransientEntityStore
+//        lateinit var xodusStore: TransientEntityStore
         val currencyService = CurrencyServiceMock()
 
         val dataSource = initExposed()
 
         @BeforeClass
         @JvmStatic fun setup() {
-            clearXodus(dbName)
-            xodusStore = initXodus(dbName)
+//            clearXodus(dbName)
+//            xodusStore = initXodus(dbName)
         }
     }
 
@@ -63,11 +60,6 @@ class TransferServiceTest {
             assertTrue(BigDecimal.ZERO.compareTo(found[Accounts.balance]) == 0)
         }
 
-        /*xodusStore.transactional(readonly = true) {
-            val found = XdAccount.filter { acc -> acc.accNumber eq accNumber }.first()
-            assertEquals(accountName, found.name)
-            assertEquals(BigDecimal.ZERO, found.balance)
-        }*/
     }
 
     @Test
@@ -83,12 +75,6 @@ class TransferServiceTest {
             assertEquals(accountName, found[Accounts.name])
             assertTrue(initialBalance.compareTo(found[Accounts.balance]) == 0)
         }
-
-        /*xodusStore.transactional(readonly = true) {
-            val found = XdAccount.filter { acc -> acc.accNumber eq accNumber }.first()
-            assertEquals(accountName, found.name)
-            assertEquals(initialBalance, found.balance)
-        }*/
     }
 
     @Test
@@ -109,15 +95,6 @@ class TransferServiceTest {
 
         }
 
-//        xodusStore.transactional(readonly = true) {
-//            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-//            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-//            assertEquals(BigDecimal.valueOf(1000), fromAcc.balance)
-//            assertEquals(BigDecimal.valueOf(0), toAcc.balance)
-//
-//            assertEquals(0, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
-//        }
-
         service.transferMoney(fromAccNumber, toAccNumber, BigDecimal.valueOf(300), "CUR1")
 
         transaction {
@@ -137,18 +114,6 @@ class TransferServiceTest {
 
         }
 
-//        xodusStore.transactional(readonly = true) {
-//            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-//            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-//            assertEquals(BigDecimal.valueOf(700), fromAcc.balance)
-//            assertEquals(BigDecimal.valueOf(300), toAcc.balance)
-//
-//            assertEquals(1, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
-//            val transfer = XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.toList()[0]
-//            assertEquals(fromAcc, transfer.from)
-//            assertEquals(toAcc, transfer.to)
-//            assertEquals(BigDecimal.valueOf(300), transfer.amount)
-//        }
     }
 
     @Test
@@ -156,13 +121,17 @@ class TransferServiceTest {
         val fromAccNumber = service.createAccount("0123", "0123-CUR1", "CUR1", BigDecimal.valueOf(100))
         val toAccNumber = service.createAccount("0456", "0456-CUR1", "CUR1", BigDecimal.valueOf(300))
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertEquals(BigDecimal.valueOf(100), fromAcc.balance)
-            assertEquals(BigDecimal.valueOf(300), toAcc.balance)
+        Database.connect(dataSource)
 
-            assertEquals(0, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
+        transaction {
+
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(100).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(300).compareTo(toAcc[Accounts.balance]) == 0)
+
+            assertEquals(0, Transfers.select{ (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id]) }.count())
+
         }
 
         var exception : Exception? = null
@@ -176,14 +145,18 @@ class TransferServiceTest {
         assertNotNull(exception)
         assertTrue(exception is IllegalStateException)
         assertEquals("Insufficient funds", exception.message)
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertEquals(BigDecimal.valueOf(100), fromAcc.balance)
-            assertEquals(BigDecimal.valueOf(300), toAcc.balance)
 
-            assertEquals(0, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
+        transaction {
+
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(100).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(300).compareTo(toAcc[Accounts.balance]) == 0)
+
+            assertEquals(0, Transfers.select{ (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id]) }.count())
+
         }
+
     }
 
     @Test
@@ -191,28 +164,36 @@ class TransferServiceTest {
         val fromAccNumber = service.createAccount("0123", "0123-CUR1", "CUR1", BigDecimal.valueOf(100))
         val toAccNumber = service.createAccount("0456", "0456-CUR3", "CUR3")
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertEquals(BigDecimal.valueOf(100), fromAcc.balance)
-            assertEquals(BigDecimal.valueOf(0), toAcc.balance)
+        Database.connect(dataSource)
 
-            assertEquals(0, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
+        transaction {
+
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(100).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(0).compareTo(toAcc[Accounts.balance]) == 0)
+
+            assertEquals(0, Transfers.select{ (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id]) }.count())
+
         }
 
         service.transferMoney(fromAccNumber, toAccNumber, BigDecimal.valueOf(100), "CUR2")
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertTrue(BigDecimal.valueOf(50).compareTo(fromAcc.balance) == 0)
-            assertTrue(BigDecimal.valueOf(200).compareTo(toAcc.balance) == 0)
+        transaction {
 
-            assertEquals(1, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
-            val transfer = XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.toList()[0]
-            assertEquals(fromAcc, transfer.from)
-            assertEquals(toAcc, transfer.to)
-            assertEquals(BigDecimal.valueOf(100), transfer.amount)
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(50).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(200).compareTo(toAcc[Accounts.balance]) == 0)
+
+            val query =
+                (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id])
+            assertEquals(1, Transfers.select(query).count())
+            val transfer = Transfers.select(query).toList()[0]
+            assertEquals(fromAcc[Accounts.id], transfer[Transfers.from])
+            assertEquals(toAcc[Accounts.id], transfer[Transfers.to])
+            assertTrue(BigDecimal.valueOf(100).compareTo(transfer[Transfers.amount]) == 0)
+
         }
     }
 
@@ -221,13 +202,17 @@ class TransferServiceTest {
         val fromAccNumber = service.createAccount("0123", "0123-CUR2", "CUR2", BigDecimal.valueOf(100))
         val toAccNumber = service.createAccount("0456", "0456-CUR1", "CUR1")
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertEquals(BigDecimal.valueOf(100), fromAcc.balance)
-            assertEquals(BigDecimal.valueOf(0), toAcc.balance)
+        Database.connect(dataSource)
 
-            assertEquals(0, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
+        transaction {
+
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(100).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(0).compareTo(toAcc[Accounts.balance]) == 0)
+
+            assertEquals(0, Transfers.select{ (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id]) }.count())
+
         }
 
         var exception : Exception? = null
@@ -242,30 +227,38 @@ class TransferServiceTest {
         assertTrue(exception is IllegalStateException)
         assertEquals("Insufficient funds", exception.message)
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertEquals(BigDecimal.valueOf(100), fromAcc.balance)
-            assertEquals(BigDecimal.valueOf(0), toAcc.balance)
+        Database.connect(dataSource)
 
-            assertEquals(0, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
+        transaction {
+
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(100).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(0).compareTo(toAcc[Accounts.balance]) == 0)
+
+            assertEquals(0, Transfers.select{ (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id]) }.count())
+
         }
 
         service.transferMoney(fromAccNumber, toAccNumber, BigDecimal.valueOf(199), "CUR3")
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertTrue(BigDecimal.valueOf(0).compareTo(fromAcc.balance) < 0)
-            assertTrue(BigDecimal.valueOf(1).compareTo(fromAcc.balance) > 0)
-            assertTrue(BigDecimal.valueOf(49).compareTo(toAcc.balance) < 0)
-            assertTrue(BigDecimal.valueOf(50).compareTo(toAcc.balance) > 0)
+        transaction {
 
-            assertEquals(1, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
-            val transfer = XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.toList()[0]
-            assertEquals(fromAcc.accNumber, transfer.from.accNumber)
-            assertEquals(toAcc.accNumber, transfer.to.accNumber)
-            assertEquals(BigDecimal.valueOf(199), transfer.amount)
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(0).compareTo(fromAcc[Accounts.balance]) < 0)
+            assertTrue(BigDecimal.valueOf(1).compareTo(fromAcc[Accounts.balance]) > 0)
+            assertTrue(BigDecimal.valueOf(49).compareTo(toAcc[Accounts.balance]) < 0)
+            assertTrue(BigDecimal.valueOf(50).compareTo(toAcc[Accounts.balance]) > 0)
+
+            val query =
+                (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id])
+            assertEquals(1, Transfers.select(query).count())
+            val transfer = Transfers.select(query).toList()[0]
+            assertEquals(fromAcc[Accounts.id], transfer[Transfers.from])
+            assertEquals(toAcc[Accounts.id], transfer[Transfers.to])
+            assertTrue(BigDecimal.valueOf(199).compareTo(transfer[Transfers.amount]) == 0)
+
         }
     }
 
@@ -274,18 +267,22 @@ class TransferServiceTest {
         val fromAccNumber = service.createAccount("0123", "0123-CUR1", "CUR1", BigDecimal.valueOf(100))
         val toAccNumber = service.createAccount("0456", "0456-CUR1", "CUR1")
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertEquals(BigDecimal.valueOf(100), fromAcc.balance)
-            assertEquals(BigDecimal.valueOf(0), toAcc.balance)
+        Database.connect(dataSource)
 
-            assertEquals(0, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
+        transaction {
+
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            assertTrue(BigDecimal.valueOf(100).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(0).compareTo(toAcc[Accounts.balance]) == 0)
+
+            assertEquals(0, Transfers.select{ (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id]) }.count())
+
         }
 
         val amountAttempts = arrayOf(50, 60, 70, 80)
 
-        val succeedAmount = AtomicDouble()
+        val succeedAmount = AtomicInteger()
         val failedCount = AtomicInteger()
 
         runBlocking {
@@ -299,7 +296,7 @@ class TransferServiceTest {
                                 BigDecimal.valueOf(amount.toDouble()),
                                 "CUR1"
                             )
-                            succeedAmount.set(amount.toDouble())
+                            succeedAmount.set(amount)
                         } catch (e: Exception) {
                             failedCount.incrementAndGet()
                         }
@@ -308,20 +305,25 @@ class TransferServiceTest {
             }
         }
 
-//        assertEquals(amountAttempts.size - 1, failedCount.get())
+        assertEquals(amountAttempts.size - 1, failedCount.get())
 
-        xodusStore.transactional(readonly = true) {
-            val fromAcc = XdAccount.filter { acc -> acc.accNumber eq fromAccNumber }.first()
-            val toAcc = XdAccount.filter { acc -> acc.accNumber eq toAccNumber }.first()
-            assertEquals(BigDecimal.valueOf(100-succeedAmount.get()), fromAcc.balance)
-            assertEquals(BigDecimal.valueOf(succeedAmount.get()), toAcc.balance)
-            assertTrue(BigDecimal.valueOf(100).compareTo(toAcc.balance + fromAcc.balance) == 0)
+        transaction {
 
-            assertEquals(1, XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.size())
-            val transfer = XdTransfer.filter{ (it.from eq fromAcc) or (it.to eq toAcc) }.toList()[0]
-            assertEquals(fromAcc, transfer.from)
-            assertEquals(toAcc, transfer.to)
-            assertEquals(BigDecimal.valueOf(succeedAmount.get()), transfer.amount)
+            val fromAcc = Accounts.select { Accounts.accNumber eq fromAccNumber }.first()
+            val toAcc = Accounts.select { Accounts.accNumber eq toAccNumber }.first()
+            val amount = succeedAmount.get().toDouble()
+            assertTrue(BigDecimal.valueOf(100- amount).compareTo(fromAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(amount).compareTo(toAcc[Accounts.balance]) == 0)
+            assertTrue(BigDecimal.valueOf(100).compareTo(toAcc[Accounts.balance] + fromAcc[Accounts.balance]) == 0)
+
+            val query =
+                (Transfers.from eq fromAcc[Accounts.id]) or (Transfers.to eq toAcc[Accounts.id])
+            assertEquals(1, Transfers.select(query).count())
+            val transfer = Transfers.select(query).toList()[0]
+            assertEquals(fromAcc[Accounts.id], transfer[Transfers.from])
+            assertEquals(toAcc[Accounts.id], transfer[Transfers.to])
+            assertTrue(BigDecimal.valueOf(amount).compareTo(transfer[Transfers.amount]) == 0)
+
         }
     }
 }

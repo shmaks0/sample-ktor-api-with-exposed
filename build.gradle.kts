@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.Coroutines
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val ktor_version: String by project
@@ -14,7 +13,7 @@ group = "ktor-api-with-xodus"
 version = "0.0.1"
 
 application {
-    mainClassName = "io.ktor.server.netty.EngineMain"
+    mainClassName = "io.shmaks.samples.ktor.ApplicationKt"
 }
 
 repositories {
@@ -25,20 +24,20 @@ repositories {
 
 dependencies {
     compile("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
-    compile("io.ktor:ktor-server-netty:$ktor_version")
-    compile("ch.qos.logback:logback-classic:$logback_version")
-    compile("io.ktor:ktor-server-core:$ktor_version")
-    compile("io.ktor:ktor-jackson:$ktor_version")
-    compile("de.nielsfalk.ktor:ktor-swagger:0.5.0")
+    implementation("io.ktor:ktor-server-netty:$ktor_version")
+    implementation("ch.qos.logback:logback-classic:$logback_version")
+    implementation("io.ktor:ktor-gson:$ktor_version")
+    implementation("de.nielsfalk.ktor:ktor-swagger:0.5.0")
+    implementation(group = "com.github.ajalt", name = "clikt", version = "1.3.0")
 
-    compile("org.jetbrains.xodus:xodus-openAPI:1.3.0")
-    compile("org.jetbrains.xodus:xodus-entity-store:1.3.0")
-    compile("org.jetbrains.xodus:dnq:1.3.440")
+//    compile("org.jetbrains.xodus:xodus-openAPI:1.3.0")
+//    compile("org.jetbrains.xodus:xodus-entity-store:1.3.0")
+//    compile("org.jetbrains.xodus:dnq:1.3.440")
 
-    compile("org.jetbrains.exposed:exposed:0.13.7")
-    compile("com.h2database:h2:1.4.197")
+    implementation("org.jetbrains.exposed:exposed:0.13.7")
+    implementation("com.h2database:h2:1.4.197")
 
-    compile("org.koin:koin-ktor:2.0.1")
+    implementation("org.koin:koin-ktor:2.0.1")
 
     testCompile("io.ktor:ktor-server-tests:$ktor_version")
 }
