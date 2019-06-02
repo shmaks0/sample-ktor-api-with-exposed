@@ -13,6 +13,7 @@ import io.shmaks.samples.ktor.service.CurrencyService
 import io.shmaks.samples.ktor.service.CurrencyServiceImpl
 import io.shmaks.samples.ktor.service.TransferService
 import io.shmaks.samples.ktor.service.TransferServiceImpl
+import jetbrains.exodus.database.TransientEntityStore
 import jetbrains.exodus.database.exceptions.ConstraintsValidationException
 import jetbrains.exodus.entitystore.EntityStore
 import org.koin.dsl.module
@@ -66,6 +67,9 @@ fun Application.module(testing: Boolean = false) {
     }
 
     val service: TransferService by inject()
+    val store: TransientEntityStore by inject()
+
+    environment.monitor.subscribe(ApplicationStopped) { store.close() }
 
     routing {
         get("/") {
@@ -81,7 +85,7 @@ fun Application.module(testing: Boolean = false) {
 val transaferAppModule = module {
     single<TransferService> { TransferServiceImpl(get(), get()) }
     single<CurrencyService> { CurrencyServiceImpl() }
-    single<EntityStore> { initXodus() }
+    single { initXodus() }
 }
 
 

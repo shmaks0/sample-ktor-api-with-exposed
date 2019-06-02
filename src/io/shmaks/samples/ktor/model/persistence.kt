@@ -2,7 +2,6 @@ package io.shmaks.samples.ktor.model
 
 import jetbrains.exodus.database.TransientEntityStore
 import jetbrains.exodus.entitystore.Entity
-import jetbrains.exodus.env.Environments
 import kotlinx.dnq.*
 import kotlinx.dnq.simple.*
 import kotlinx.dnq.store.container.StaticStoreContainer
