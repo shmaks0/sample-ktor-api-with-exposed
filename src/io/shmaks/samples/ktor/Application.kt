@@ -9,11 +9,9 @@ import io.ktor.response.*
 import io.ktor.features.*
 import io.ktor.routing.*
 import io.ktor.http.*
-import de.nielsfalk.ktor.swagger.version.shared.Group
 import io.ktor.gson.gson
 import io.ktor.http.HttpStatusCode.Companion.Created
 import io.ktor.locations.KtorExperimentalLocationsAPI
-import io.ktor.locations.Location
 import io.ktor.locations.Locations
 import io.ktor.server.engine.ApplicationEngine
 import io.ktor.server.engine.embeddedServer
@@ -24,31 +22,6 @@ import org.koin.dsl.module
 import org.koin.ktor.ext.Koin
 import org.koin.ktor.ext.inject
 import java.math.BigDecimal
-
-/*@KtorExperimentalLocationsAPI
-@Group("accounts operations")
-@Location("/api/v1/accounts")
-class accounts
-
-@KtorExperimentalLocationsAPI
-@Group("transfers operations")
-@Location("/api/v1/transfers")
-class transfers
-
-data class Model<T>(val elements: MutableList<T>)
-
-val sizeSchemaMap = mapOf(
-    "type" to "number",
-    "minimum" to 0
-)
-
-fun rectangleSchemaMap(refBase: String) = mapOf(
-    "type" to "object",
-    "properties" to mapOf(
-        "a" to mapOf("${'$'}ref" to "$refBase/size"),
-        "b" to mapOf("${'$'}ref" to "$refBase/size")
-    )
-)*/
 
 data class NewAccountModel(val name: String, val clientId: String, val currencyCode: String, val balance: BigDecimal)
 data class NewAccountResponse(val accNumber: Long)
@@ -86,43 +59,16 @@ internal fun run(port: Int, wait: Boolean = true): ApplicationEngine {
             }
         }
         install(Locations)
-//        install(SwaggerSupport) {
-//            forwardRoot = true
-//            val information = Information(
-//                version = "0.1",
-//                title = "sample api implemented in ktor"
-//            )
-//            swagger = Swagger().apply {
-//                info = information
-//                definitions["size"] = sizeSchemaMap
-//                definitions["Rectangle"] = rectangleSchemaMap("#/definitions")
-//            }
-//            openApi = OpenApi().apply {
-//                info = information
-//                components.schemas["size"] = sizeSchemaMap
-//                components.schemas["Rectangle"] = rectangleSchemaMap("#/components/schemas")
-//            }
-//        }
 
         val service: TransferService by inject()
 
         routing {
-//            post<accounts, NewAccountModel>(
-//                "create"
-//                    .description("Create new account")
-//                    .responds(created<NewAccountResponse>())
-//            ) { _, entity ->
             post<NewAccountModel>("/api/v1/accounts") { entity ->
                 call.respond(Created, NewAccountResponse(
                     service.createAccount(entity.clientId, entity.name, entity.currencyCode, entity.balance)
                 ))
             }
 
-//            post<transfers, TransferModel>(
-//                "create"
-//                    .description("Transfer money")
-//                    .responds(HttpCodeResponse(statusCode = HttpStatusCode.OK, responseTypes = emptyList()))
-//            ) { _, entity ->
             post<TransferModel>("/api/v1/transfers") { entity ->
                 call.respond(HttpStatusCode.OK, service.transferMoney(entity.from, entity.to, entity.amount, entity.currencyCode))
             }
