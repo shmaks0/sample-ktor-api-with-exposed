@@ -2,7 +2,13 @@ package io.shmaks.samples.ktor.service
 
 import java.math.BigDecimal
 
-class CurrencyService {
+interface CurrencyService {
+    fun supportCurrency(code: String): Boolean
+    fun exchangeRates(currencyPairs: Array<CurrencyPair>): Map<Int, BigDecimal>
+}
+
+// just simple imitation of currency service with hardcoded rates for 3 currencies, can be implemented using some rest API for exchanges
+class CurrencyServiceImpl : CurrencyService {
 
     private val rates = mapOf(
         "USD" to mapOf(
@@ -21,9 +27,9 @@ class CurrencyService {
         )
     )
 
-    fun supportCurrency(code: String) = rates.containsKey(code)
+    override fun supportCurrency(code: String) = rates.containsKey(code)
 
-    fun exchangeRates(currencyPairs: Array<CurrencyPair>): Map<Int, BigDecimal> =
+    override fun exchangeRates(currencyPairs: Array<CurrencyPair>): Map<Int, BigDecimal> =
         currencyPairs
             .mapIndexed { idx, currencyPair -> Pair(
                     idx,

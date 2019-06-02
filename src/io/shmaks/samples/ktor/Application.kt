@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.*
 import io.ktor.jackson.*
 import io.shmaks.samples.ktor.model.initXodus
 import io.shmaks.samples.ktor.service.CurrencyService
+import io.shmaks.samples.ktor.service.CurrencyServiceImpl
 import io.shmaks.samples.ktor.service.TransferService
 import io.shmaks.samples.ktor.service.TransferServiceImpl
 import jetbrains.exodus.database.exceptions.ConstraintsValidationException
@@ -18,6 +19,7 @@ import org.koin.dsl.module
 import org.koin.ktor.ext.Koin
 import org.koin.ktor.ext.inject
 import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
@@ -56,6 +58,11 @@ fun Application.module(testing: Boolean = false) {
             call.respond(HttpStatusCode.BadRequest)
             throw cause
         }
+
+        exception<IllegalStateException> { cause ->
+            call.respond(HttpStatusCode.BadRequest)
+            throw cause
+        }
     }
 
     val service: TransferService by inject()
@@ -73,7 +80,7 @@ fun Application.module(testing: Boolean = false) {
 
 val transaferAppModule = module {
     single<TransferService> { TransferServiceImpl(get(), get()) }
-    single { CurrencyService() }
+    single<CurrencyService> { CurrencyServiceImpl() }
     single<EntityStore> { initXodus() }
 }
 

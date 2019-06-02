@@ -2,11 +2,9 @@ package io.shmaks.samples.ktor.model
 
 import jetbrains.exodus.database.TransientEntityStore
 import jetbrains.exodus.entitystore.Entity
+import jetbrains.exodus.env.Environments
 import kotlinx.dnq.*
-import kotlinx.dnq.simple.Constraints
-import kotlinx.dnq.simple.DEFAULT_REQUIRED
-import kotlinx.dnq.simple.min
-import kotlinx.dnq.simple.xdProp
+import kotlinx.dnq.simple.*
 import kotlinx.dnq.store.container.StaticStoreContainer
 import kotlinx.dnq.util.XdPropertyCachedProvider
 import kotlinx.dnq.util.initMetaData
@@ -19,7 +17,7 @@ class XdAccount(entity: Entity) : XdEntity(entity) {
 
     var clientId by xdRequiredStringProp()
     var name by xdRequiredStringProp()
-    var accNumber by xdRequiredLongProp()
+    var accNumber by xdRequiredLongProp(unique = true)
     var createdAt by xdRequiredDateTimeProp()
     var updatedAt by xdRequiredDateTimeProp()
 
@@ -40,12 +38,12 @@ class XdTransfer(entity: Entity) : XdEntity(entity) {
     var to by xdLink1(XdAccount)
 }
 
-fun initXodus(): TransientEntityStore {
+fun initXodus(dbName: String = "moneyTransfers"): TransientEntityStore {
     XdModel.registerNodes(
         XdAccount,
         XdTransfer
     )
-    val databaseHome = File(System.getProperty("user.home"), "moneyTransfers")
+    val databaseHome = File(System.getProperty("user.home"), dbName)
     val store = StaticStoreContainer.init(
         dbFolder = databaseHome,
         environmentName = "db"
@@ -59,12 +57,17 @@ fun initXodus(): TransientEntityStore {
     return store
 }
 
+fun clearXodus(dbName: String = "moneyTransfers") {
+    File(System.getProperty("user.home"), dbName).deleteRecursively()
+}
+
 fun <R : XdEntity> xdRequiredBigDecimalProp(dbName: String? = null, constraints: Constraints<R, BigDecimal?>? = null) =
     XdPropertyCachedProvider {
-        xdProp(
+        XdProperty<R, String>(
+            String::class.java,
             dbName,
-            constraints,
-            require = true,
+            constraints.collect().wrap<R, String, BigDecimal> { BigDecimal(it) },
+            requirement = XdPropertyRequirement.REQUIRED,
             default = DEFAULT_REQUIRED
-        )
+        ).wrap({ BigDecimal(it) }, { it.toPlainString() })
     }

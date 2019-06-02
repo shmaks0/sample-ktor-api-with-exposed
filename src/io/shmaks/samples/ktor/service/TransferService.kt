@@ -8,37 +8,37 @@ import jetbrains.exodus.database.TransientEntityStore
 import kotlinx.dnq.query.*
 import org.joda.time.DateTime
 import java.lang.IllegalArgumentException
+import java.lang.IllegalStateException
 import java.math.BigDecimal
 
 interface TransferService {
-    fun createAccount(accountClient: String, accountName: String, accountCurrency: String): Long
+    fun createAccount(accountClient: String, accountName: String, accountCurrency: String, initialBalance: BigDecimal = BigDecimal.ZERO): Long
 
     fun transferMoney(fromAccNumber: Long, toAccNumber: Long, _amount: BigDecimal, currency: String)
 
     fun getHistory(accNumber: Long, page: Int, pageSize: Int): Page<AccountOperation>
 }
 
-class TransferServiceImpl(val store: TransientEntityStore, val currencyService: CurrencyService) : TransferService {
-    override fun createAccount(accountClient: String, accountName: String, accountCurrency: String): Long {
+class TransferServiceImpl(private val store: TransientEntityStore, private val currencyService: CurrencyService) : TransferService {
+    override fun createAccount(accountClient: String, accountName: String, accountCurrency: String, initialBalance: BigDecimal): Long {
         // assume that accountClient is correct
 
         if (!currencyService.supportCurrency(accountCurrency)) {
             throw IllegalArgumentException("Unsupported currency")
         }
 
-        val account = store.transactional {
-            val now = DateTime()
+        val now = DateTime()
+        return store.transactional {
             XdAccount.new {
                 clientId = accountClient
                 name = accountName
                 accNumber = it.getSequence("accountNumbers").increment()
                 currencyCode = accountCurrency
-                balance = BigDecimal.ZERO
+                balance = initialBalance
                 createdAt = now
                 updatedAt = now
-            }
+            }.accNumber
         }
-        return account.accNumber
     }
 
     override fun transferMoney(
@@ -81,7 +81,7 @@ class TransferServiceImpl(val store: TransientEntityStore, val currencyService: 
             val newBalanceFrom = exchangeRates[0]!! * fromAcc.balance - _amount
 
             if (newBalanceFrom < BigDecimal.ZERO) {
-                throw IllegalArgumentException("Insufficient funds")
+                throw IllegalStateException("Insufficient funds")
             }
 
             fromAcc.balance = exchangeRates[2]!! * newBalanceFrom
@@ -101,7 +101,7 @@ class TransferServiceImpl(val store: TransientEntityStore, val currencyService: 
     }
 
     override fun getHistory(accNumber: Long, page: Int, pageSize: Int): Page<AccountOperation> =
-        store.transactional {
+        store.transactional(readonly = true) {
             val account = XdAccount.filter { acc -> acc.accNumber eq accNumber }.firstOrNull()
                 ?: throw IllegalArgumentException("Wrong account")
 
