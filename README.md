@@ -1,5 +1,5 @@
-# sample-ktor-api-with-xodus
-Sample Ktor API with Xodus embedded database
+# sample-ktor-api-with-exposed
+Sample Ktor API with H2 and exposed for access
 
 1) Create account:  
 POST http://0.0.0.0:8080/api/v1/accounts  

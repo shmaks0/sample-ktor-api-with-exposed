@@ -1,1 +1,1 @@
-rootProject.name = "ktor-api-with-xodus"
+rootProject.name = "ktor-api-with-exposed"

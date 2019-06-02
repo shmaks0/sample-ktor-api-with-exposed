@@ -10,7 +10,6 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.Assert.fail
 import org.junit.Before
-import org.junit.BeforeClass
 import org.junit.Test
 import java.lang.IllegalStateException
 import java.math.BigDecimal
@@ -24,17 +23,8 @@ class TransferServiceTest {
     private lateinit var service: TransferService
 
     companion object {
-        val dbName = "moneyTransfers-test"
-//        lateinit var xodusStore: TransientEntityStore
         val currencyService = CurrencyServiceMock()
-
         val dataSource = initExposed()
-
-        @BeforeClass
-        @JvmStatic fun setup() {
-//            clearXodus(dbName)
-//            xodusStore = initXodus(dbName)
-        }
     }
 
     @Before
