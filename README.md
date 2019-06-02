@@ -1,6 +1,8 @@
 # sample-ktor-api-with-exposed
 Sample Ktor API with H2 and exposed for access
-
+  
+gradle run  
+  
 1) Create account:  
 POST http://0.0.0.0:8080/api/v1/accounts  
 {"name": <name (string)>,"clientId":<client id (string)>, "currencyCode":<USD|EUR|GBP (string)>,"balance":<starting balance (decimal)>}
