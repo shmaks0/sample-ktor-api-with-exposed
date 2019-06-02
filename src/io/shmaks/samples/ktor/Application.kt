@@ -15,7 +15,6 @@ import io.shmaks.samples.ktor.service.TransferService
 import io.shmaks.samples.ktor.service.TransferServiceImpl
 import jetbrains.exodus.database.TransientEntityStore
 import jetbrains.exodus.database.exceptions.ConstraintsValidationException
-import jetbrains.exodus.entitystore.EntityStore
 import org.koin.dsl.module
 import org.koin.ktor.ext.Koin
 import org.koin.ktor.ext.inject

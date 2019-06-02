@@ -35,6 +35,9 @@ dependencies {
     compile("org.jetbrains.xodus:xodus-entity-store:1.3.0")
     compile("org.jetbrains.xodus:dnq:1.3.440")
 
+    compile("org.jetbrains.exposed:exposed:0.13.7")
+    compile("com.h2database:h2:1.4.197")
+
     compile("org.koin:koin-ktor:2.0.1")
 
     testCompile("io.ktor:ktor-server-tests:$ktor_version")
